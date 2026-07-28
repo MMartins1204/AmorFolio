@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart } from '../lib/icons';
+import { supabase } from '../lib/supabase';
 
 interface CaptionEditorProps {
   photoId: string;
@@ -86,14 +87,43 @@ export default function CaptionEditor({ photoId, currentCaption, isOpen, onSave,
 }
 
 /**
- * Hook to manage captions from localStorage
+ * Hook to manage captions from Supabase (with localStorage fallback)
  */
 export function useCaptions() {
   const [captions, setCaptions] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    // 1. Initial fast load from localStorage
     const savedCaptions = localStorage.getItem('amorfolio_captions');
-    if (savedCaptions) setCaptions(JSON.parse(savedCaptions));
+    if (savedCaptions) {
+      setCaptions(JSON.parse(savedCaptions));
+    }
+
+    // 2. Fetch fresh data from Supabase in the background
+    const client = supabase;
+    if (client) {
+      const fetchCaptions = async () => {
+        try {
+          const { data, error } = await client
+            .from('amorfolio_captions')
+            .select('photo_id, caption');
+
+          if (error) {
+            console.error('Erro ao carregar legendas do Supabase:', error.message);
+          } else if (data) {
+            const remoteCaptions: Record<string, string> = {};
+            data.forEach((row) => {
+              remoteCaptions[row.photo_id] = row.caption;
+            });
+            setCaptions(remoteCaptions);
+            localStorage.setItem('amorfolio_captions', JSON.stringify(remoteCaptions));
+          }
+        } catch (err: any) {
+          console.error('Falha de rede ao buscar legendas do Supabase:', err);
+        }
+      };
+      fetchCaptions();
+    }
   }, []);
 
   const getCaption = useCallback((photoId: string): string => {
@@ -101,9 +131,29 @@ export function useCaptions() {
   }, [captions]);
 
   const savePhotoEdits = useCallback((photoId: string, caption: string) => {
+    // Update local state immediately for zero-lag UI feedback
     const updatedCaptions = { ...captions, [photoId]: caption };
     setCaptions(updatedCaptions);
     localStorage.setItem('amorfolio_captions', JSON.stringify(updatedCaptions));
+
+    // Save to Supabase if configured
+    const client = supabase;
+    if (client) {
+      const uploadCaption = async () => {
+        try {
+          const { error } = await client
+            .from('amorfolio_captions')
+            .upsert({ photo_id: photoId, caption: caption }, { onConflict: 'photo_id' });
+
+          if (error) {
+            console.error('Erro ao salvar legenda no Supabase:', error.message);
+          }
+        } catch (err: any) {
+          console.error('Falha ao enviar legenda para o Supabase:', err);
+        }
+      };
+      uploadCaption();
+    }
   }, [captions]);
 
   return { getCaption, savePhotoEdits, captions };
