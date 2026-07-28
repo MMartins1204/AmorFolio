@@ -7,11 +7,11 @@ interface MessageSectionProps {
 
 export default function MessageSection({ message }: MessageSectionProps) {
   const defaultMessage = `
-    Cada dia ao seu lado é um presente.
+    Cada dia ao teu lado é um presente.
     Cada foto aqui é uma lembrança de que o amor verdadeiro existe.
     
     Obrigado por cada momento, cada risada, cada abraço.
-    Obrigado por ser você.
+    Obrigado por seres tu.
     
     Eu te amo mais do que as palavras podem expressar.
   `;
@@ -38,7 +38,7 @@ export default function MessageSection({ message }: MessageSectionProps) {
         </motion.div>
 
         <h2 className="font-[family-name:var(--font-display)] text-4xl md:text-5xl font-bold gradient-text mb-8">
-          Uma Carta Para Você
+          Carta Para Vi
         </h2>
 
         <div className="glass-card rounded-3xl p-8 md:p-12 relative overflow-hidden">
@@ -62,7 +62,7 @@ export default function MessageSection({ message }: MessageSectionProps) {
 
           <div className="mt-8 pt-6 border-t border-rose-200/30">
             <p className="text-rose-400 text-sm flex items-center justify-center gap-1.5">
-              Com todo meu amor
+              Ass. BritinhoDela
               <Heart size={12} className="text-rose-400" />
             </p>
           </div>
