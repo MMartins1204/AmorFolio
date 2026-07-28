@@ -26,7 +26,7 @@ export default function Footer() {
             <Heart size={22} className="text-rose-500" />
           </span>
           <span className="text-4xl font-[family-name:var(--font-display)] font-bold gradient-text">
-            AmorFolio
+            Brito & Belvina
           </span>
           <span style={{ animation: 'heartbeat 2s ease-in-out 0.5s infinite' }}>
             <Heart size={22} className="text-rose-500" />
