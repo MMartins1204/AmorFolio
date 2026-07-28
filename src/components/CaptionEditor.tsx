@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart } from '../lib/icons';
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 
 interface CaptionEditorProps {
   photoId: string;
@@ -87,7 +88,7 @@ export default function CaptionEditor({ photoId, currentCaption, isOpen, onSave,
 }
 
 /**
- * Hook to manage captions from Supabase (with localStorage fallback)
+ * Hook to manage captions from Firebase Firestore (with localStorage fallback & auto-migration)
  */
 export function useCaptions() {
   const [captions, setCaptions] = useState<Record<string, string>>({});
@@ -95,34 +96,40 @@ export function useCaptions() {
   useEffect(() => {
     // 1. Initial fast load from localStorage
     const savedCaptions = localStorage.getItem('amorfolio_captions');
+    const localCaptions: Record<string, string> = savedCaptions ? JSON.parse(savedCaptions) : {};
     if (savedCaptions) {
-      setCaptions(JSON.parse(savedCaptions));
+      setCaptions(localCaptions);
     }
 
-    // 2. Fetch fresh data from Supabase in the background
-    const client = supabase;
-    if (client) {
-      const fetchCaptions = async () => {
+    // 2. Fetch fresh data from Firebase in the background and migrate any missing items
+    const clientDb = db;
+    if (clientDb) {
+      const fetchAndMigrateCaptions = async () => {
         try {
-          const { data, error } = await client
-            .from('amorfolio_captions')
-            .select('photo_id, caption');
+          const querySnapshot = await getDocs(collection(clientDb, 'captions'));
+          const remoteCaptions: Record<string, string> = {};
+          querySnapshot.forEach((docSnap) => {
+            remoteCaptions[docSnap.id] = docSnap.data().caption;
+          });
 
-          if (error) {
-            console.error('Erro ao carregar legendas do Supabase:', error.message);
-          } else if (data) {
-            const remoteCaptions: Record<string, string> = {};
-            data.forEach((row) => {
-              remoteCaptions[row.photo_id] = row.caption;
-            });
-            setCaptions(remoteCaptions);
-            localStorage.setItem('amorfolio_captions', JSON.stringify(remoteCaptions));
+          // Check if we have local storage captions that aren't in Firestore yet, and migrate them
+          const mergedCaptions = { ...remoteCaptions };
+
+          for (const [photoId, captionValue] of Object.entries(localCaptions)) {
+            if (!remoteCaptions[photoId]) {
+              // Upload missing local caption to Firestore
+              await setDoc(doc(clientDb, 'captions', photoId), { caption: captionValue });
+              mergedCaptions[photoId] = captionValue;
+            }
           }
+
+          setCaptions(mergedCaptions);
+          localStorage.setItem('amorfolio_captions', JSON.stringify(mergedCaptions));
         } catch (err: any) {
-          console.error('Falha de rede ao buscar legendas do Supabase:', err);
+          console.error('Erro ao conectar ao Firebase Firestore:', err);
         }
       };
-      fetchCaptions();
+      fetchAndMigrateCaptions();
     }
   }, []);
 
@@ -136,20 +143,14 @@ export function useCaptions() {
     setCaptions(updatedCaptions);
     localStorage.setItem('amorfolio_captions', JSON.stringify(updatedCaptions));
 
-    // Save to Supabase if configured
-    const client = supabase;
-    if (client) {
+    // Save to Firestore if configured
+    const clientDb = db;
+    if (clientDb) {
       const uploadCaption = async () => {
         try {
-          const { error } = await client
-            .from('amorfolio_captions')
-            .upsert({ photo_id: photoId, caption: caption }, { onConflict: 'photo_id' });
-
-          if (error) {
-            console.error('Erro ao salvar legenda no Supabase:', error.message);
-          }
+          await setDoc(doc(clientDb, 'captions', photoId), { caption });
         } catch (err: any) {
-          console.error('Falha ao enviar legenda para o Supabase:', err);
+          console.error('Falha ao enviar legenda para o Firebase:', err);
         }
       };
       uploadCaption();
