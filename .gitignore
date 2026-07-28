@@ -27,3 +27,9 @@ dist-ssr
 /Hernâni (com Konfuzo_412) - É Ela (Vídeo Oficial) (2026)(MP3_320K).mp3
 /WhatsApp Image 2026-07-28 at 00.28.38.jpeg
 
+# Environment variables
+.env
+.env.*
+.env.local
+
+
