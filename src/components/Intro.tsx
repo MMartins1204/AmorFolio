@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Book, Lightning, Drama, HeartFire, Star, HeartDouble } from '../lib/icons';
 
@@ -67,7 +67,6 @@ export default function Intro({ onComplete }: IntroProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [showSkip, setShowSkip] = useState(false);
   const [photoError, setPhotoError] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => {
     const t = setTimeout(() => setShowSkip(true), 2000);
@@ -83,15 +82,7 @@ export default function Intro({ onComplete }: IntroProps) {
     }
   }, [currentSlide, onComplete]);
 
-  useEffect(() => {
-    if (currentSlide < slides.length) {
-      timerRef.current = setTimeout(advance, slides[currentSlide].duration);
-    }
-    return () => clearTimeout(timerRef.current);
-  }, [currentSlide, advance]);
-
   const skip = () => {
-    clearTimeout(timerRef.current);
     setIsVisible(false);
     setTimeout(onComplete, 600);
   };
@@ -192,13 +183,11 @@ export default function Intro({ onComplete }: IntroProps) {
           {/* Progress dots */}
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
             {slides.map((_, i) => (
-              <motion.div
+              <div
                 key={i}
                 className={`h-1 rounded-full transition-all duration-500 ${
                   i === currentSlide ? 'bg-rose-400 w-6' : i < currentSlide ? 'bg-rose-500/40 w-2' : 'bg-white/15 w-2'
                 }`}
-                animate={i === currentSlide ? { scaleX: [0, 1], originX: 0 } : {}}
-                transition={{ duration: slides[currentSlide].duration / 1000, ease: 'linear' }}
               />
             ))}
           </div>
@@ -221,11 +210,11 @@ export default function Intro({ onComplete }: IntroProps) {
           {/* Tap hint */}
           <motion.p
             initial={{ opacity: 0 }}
-            animate={{ opacity: 0.3 }}
-            transition={{ delay: 3 }}
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 text-xs text-white/30 z-20"
+            animate={{ opacity: [0.2, 0.5, 0.2] }}
+            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 text-xs text-white/40 z-20 pointer-events-none"
           >
-            toque para continuar
+            toque na tela para continuar
           </motion.p>
         </motion.div>
       )}
